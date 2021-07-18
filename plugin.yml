@@ -1,0 +1,13 @@
+name: IG
+version: 1.0
+author: Erez
+main: me.erez.IG.Main
+description: a challenge based on the Avengers movie
+
+commands:
+  getStones:
+    description: Get every infinity stone
+  getGlove:
+    description: Get the Infinity Gauntlet
+  printGlovers:
+    description: Print every glover

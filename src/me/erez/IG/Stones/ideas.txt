@@ -1,0 +1,67 @@
+Space stone:
+
+normal: 
+	- teleport with vision 
+	- teleport players and entities
+	- speed passive
+
+empowered: 
+	- teleport anywhere
+	- lower cooldowns
+	- quicker speed passive
+
+Reality Stone:
+
+normal: Block Changer
+	- Search bar
+	- Item Upgrader
+
+
+Power stone:
+
+normal: 
+	- Permanent strength
+	- Strength projectiles
+	
+	
+Time stone:
+
+normal:
+	- Time stamp class
+	- freeze time
+	- make the day go faster/slower
+	
+empowered:
+
+	- freeze time for longer
+	- Extend time stamps
+	
+Soul stone:
+
+normal:
+
+	- Mobs can't focus you
+	- Play sound effects for players
+	- Summon NPCs near victims
+	- Blind, nausea
+	- Send players to the void (immune)
+	- Manipulate mobs
+
+empowered:
+
+	- Do it to everyone
+	- low cooldowns
+	- Voodoo
+	(if there's permanent death) 
+	- revive a player
+	- send someone to a mental limbo
+
+Mind stone:
+
+normal: 
+	- probably regular potion effects
+	- get info about a single person, with cooldown
+	
+empowered:
+	- heavier potion effects
+	- get info automatically about everyone0

@@ -22,6 +22,7 @@ import org.bukkit.Server;
 import org.bukkit.SoundCategory;
 import org.bukkit.TreeType;
 import org.bukkit.World;
+import org.bukkit.WorldCreator;
 import org.bukkit.block.Block;
 import org.bukkit.craftbukkit.v1_16_R3.entity.CraftPlayer;
 import org.bukkit.enchantments.Enchantment;
@@ -32,6 +33,7 @@ import org.bukkit.entity.Snowball;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -64,9 +66,10 @@ import org.bukkit.util.Vector;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 
-import me.erez.IG.Empty10min;
 import me.erez.IG.Glove;
 import me.erez.IG.Main;
+import me.erez.IG.PastEntities;
+import me.erez.IG.TimeStamp;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.ComponentBuilder;
@@ -84,10 +87,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.apache.commons.net.ftp.FTP;
-import org.apache.commons.net.ftp.FTPClient;
-import org.apache.commons.net.ftp.FTPFile;
-
 //variables
 
 public class Reality implements Listener {
@@ -98,8 +97,12 @@ public class Reality implements Listener {
 
 	private boolean enableRewind = false;
 	private int loadouts = 0;
-	private String xmin = "none";
+	private int rewindMinutes = -1;
 	private int rewindTask;
+	private World world = Bukkit.getWorlds().get(0);
+	
+	private ArrayList<HashMap<Player, TimeStamp>> timeStamps = new ArrayList<HashMap<Player, TimeStamp>>();
+	private ArrayList<PastEntities> pastEntities = new ArrayList<PastEntities>();
 	
 
 	private String missingPower = "You must have the " + ChatColor.DARK_PURPLE + "Power Stone " + ChatColor.WHITE + "in order to use this feature!";
@@ -270,6 +273,9 @@ public class Reality implements Listener {
 		
 		loadBlocks();
 		loadItems();
+
+		
+		
 
 	}
 
@@ -560,48 +566,52 @@ public class Reality implements Listener {
 		}
 		
 		//Rewind time
-		/*
+		
 		if((lore.get(0).equals(ChatColor.DARK_RED + "Must collect them all...") &&
 				(event.getAction().equals(Action.LEFT_CLICK_AIR) || event.getAction().equals(Action.LEFT_CLICK_BLOCK)) 
 					&& plugin.gloves.get(findPlayer(p)).getEquipped().equals("Rewind")
 					&& (p.getOpenInventory().getType() == InventoryType.CRAFTING || p.getOpenInventory().getType() == InventoryType.CREATIVE)
 					&& (p.getInventory().getItemInMainHand().getType().equals(Material.AIR) || p.getInventory().getItemInMainHand().getType().equals(null)))){
-			
-			World world = Bukkit.getWorld("world");
-			World nether = Bukkit.getWorld("world_nether");
-			ArrayList<Location> locations = new ArrayList<>();
-			
-			for(Player player : Bukkit.getOnlinePlayers()) {
+		
+		
+		/*
+		for(int i = loadouts; i <= 10 - rewindMinutes; i += 0) {
+		
+			for(Player player : timeStamps.get(i).keySet()) {
 				
-				Location away = new Location(nether, 69, 420, 69);
-				locations.add(player.getLocation());
-				enableRewind = false;
+				TimeStamp timey = timeStamps.get(i).get(player);
+				timey.restoreBrokenBlocks();
+				timey.restorePlacedBlocks();
 				
-				
+				if(i == rewindMinutes) {
+					timey.restoreGlove();
+					timey.restorePlayer();
+					pastEntities.get(i).restoreEntities();
+					pastEntities.get(i).restoreChests();
+				}
 				
 			}
 			
-			p.sendMessage(ChatColor.GREEN + p.getName() + " is sending back time in " + xmin.charAt(0) + " minutes!");
+			loadouts--;
 			
-			try {
-				rewindTime(xmin);
-			} catch (IOException e) {
+			
+		}
+		*/
+		
+		//let everyone know that the server was rewinded
+		for(Player player : Bukkit.getOnlinePlayers()) {
+			if(player != p)
+				player.sendTitle(ChatColor.GREEN + p.getName() + " has reversed time in " + rewindMinutes + " minutes!", "", 1, 6, 1);
+			
+		}
 
-			}
-			
-			for(Player player : Bukkit.getOnlinePlayers()) {
-				int i = 0;
-				player.teleport(locations.get(i));
-				i++;
-			}
-			
 		
 			
 			
 			
 		}
 		
-		*/
+		
 
 	}
 
@@ -1284,22 +1294,37 @@ public class Reality implements Listener {
 			e.setCancelled(true);
 			
 			if(e.getCurrentItem().getType().equals(Material.BOOK)) {
-				
+				/*
 				for(int i = 0; i < 5; i++) {
-					ItemStack item = rewindInv.getItem(i + 11);
-					if (!item.getType().equals(Material.AIR) || !item.getType().equals(null))
-						removeEnchantments(rewindInv.getItem(i + 11));
+					Material mat = rewindInv.getItem(i + 11).getType();
+					if (mat.equals(Material.AIR) || mat.equals(null))
+						break;
+					else removeEnchantments(rewindInv.getItem(i + 11));
 				}
 				
 				for(int i = 0; i < 5; i++) {
-					ItemStack item = rewindInv.getItem(i + 11);
-					if (!item.getType().equals(Material.AIR) || !item.getType().equals(null))
-						removeEnchantments(rewindInv.getItem(i + 11));
+					Material mat = rewindInv.getItem(i + 11).getType();
+					if (mat.equals(Material.AIR) || mat.equals(null))
+						break;
+					else removeEnchantments(rewindInv.getItem(i + 20));
+				}
+				*/
+				
+				if(rewindMinutes != -1) {
+					
+					int addition;
+					if(rewindMinutes > 5)
+						addition = 14;
+					else addition = 10;
+					
+					removeEnchantments(rewindInv.getItem(rewindMinutes + addition));
+					
 				}
 				
 				int amount = e.getCurrentItem().getAmount();
+				rewindMinutes = amount;
 				addEmptyEnchantment(e.getCurrentItem());
-				xmin = "" + amount + "min";
+
 			}
 			
 			if(e.getCurrentItem().equals(activate)) {
@@ -1469,13 +1494,7 @@ public class Reality implements Listener {
 		
 	}
 
-	@EventHandler
-	public void blockPlace(BlockPlaceEvent event) {
-		if (event.getItemInHand().getItemMeta().getLore().get(0)
-				.equals(ChatColor.DARK_RED + "Reality can be whatever I want")) {
-			event.setCancelled(true);
-		}
-	}
+
 
 	//global teleport prompter
 	@EventHandler
@@ -1585,6 +1604,12 @@ public class Reality implements Listener {
 
 			
 		}
+		
+		e.setCancelled(true);
+		p.sendMessage(timeStamps.size() + "");
+		p.sendMessage(pastEntities.size() + "");
+		
+		
 	}
 	
 	@EventHandler
@@ -1684,6 +1709,33 @@ public class Reality implements Listener {
 			
 		}
 	}
+	
+	@EventHandler
+	public void breakEvent(BlockBreakEvent e) {
+		
+		if(!enableRewind) return;
+		Player player = e.getPlayer();
+		timeStamps.get(timeStamps.size() - 1).get(player).getPlacedBlocks().add(e.getBlock().getLocation());
+		
+	}
+	
+	@EventHandler
+	public void blockPlace(BlockPlaceEvent event) {
+		
+		if (event.getItemInHand().getItemMeta().getLore().get(0).equals(ChatColor.DARK_RED + "Reality can be whatever I want")) {
+			
+			event.setCancelled(true);
+		}
+		
+		if(enableRewind) {
+			Player player = event.getPlayer();
+			timeStamps.get(timeStamps.size() - 1).get(player).getBrokenBlocks().put(event.getBlock().getLocation(), event.getBlock().getType());
+		}
+		
+		
+	}
+	
+
 	
 	
 	
@@ -2097,17 +2149,17 @@ public class Reality implements Listener {
 	}
 	
 	public void generateRewindInv(Player p) {
+		
+		//Power adjustment
 		int pages;
 		int maximum;
 		
 		if(plugin.gloves.get(findPlayer(p)).getPower()) {
 			pages = 36;
 			rewindInv = Bukkit.createInventory(null, pages, ChatColor.GREEN + "Rewind");
-			if(loadouts > 10) {
-				maximum = 10;
-			}
-			
-			else maximum = loadouts;
+			if(loadouts > 11) {
+				maximum = 11;
+			} else maximum = loadouts;
 			
 			rewindInv.setItem(27, cancel);
 			rewindInv.setItem(35, activate);
@@ -2115,27 +2167,30 @@ public class Reality implements Listener {
 		else {
 			pages = 27;
 			rewindInv = Bukkit.createInventory(null, pages, ChatColor.GREEN + "Rewind");
-			if(loadouts > 5) {
-				maximum = 5;
-			}
-			
-			
-			else maximum = loadouts;
+			if (loadouts > 6) {
+				maximum = 6;
+			} else maximum = loadouts;
 			
 			rewindInv.setItem(18, cancel);
 			rewindInv.setItem(26, activate);
 		}
 		
 		
-		if(loadouts == 0) {
-			p.sendMessage("There aren't any rewind slots.");
+		if(loadouts < 2) {
+			p.sendMessage("There aren't any rewind slots available yet.");
 			p.sendMessage("Please wait up to 1 minute");
 			p.closeInventory();
 			return;
 		}
 		
 		
-		for(int i = 1; i <= maximum; i++) {
+		for(int i = 1; i < maximum; i++) {
+			
+			boolean enchant;
+			if(rewindMinutes == -1)
+				enchant = false;
+			else enchant = true;
+			
 			ItemStack load = createGuiItem(Material.BOOK, ChatColor.GREEN + "" + i + " minute", ChatColor.DARK_GREEN + "Go back in time");
 			load.setAmount(i);
 			int slot;
@@ -2146,6 +2201,14 @@ public class Reality implements Listener {
 			else {
 				slot = 10;
 				rewindInv.setItem(slot + i, load);
+			}
+			
+			if(enchant) {
+				int addition;
+				if(rewindMinutes > 5)
+					addition = 14;
+				else addition = 10;
+				addEmptyEnchantment(rewindInv.getItem(addition + rewindMinutes));
 			}
 			
 		}
@@ -2382,7 +2445,14 @@ public class Reality implements Listener {
 		
 		enableRewind = true;
 		
+		HashMap<Player, TimeStamp> timeStamp = new HashMap<Player, TimeStamp>();
 		
+		for(Player player : Bukkit.getOnlinePlayers()) {
+			timeStamp.put(player, new TimeStamp(plugin.gloves.get(findPlayer(player))));
+		}
+		timeStamps.add(timeStamp);
+		
+		pastEntities.add(new PastEntities(world));
 		
 		BukkitScheduler sched = p.getServer().getScheduler();
 		
@@ -2395,14 +2465,28 @@ public class Reality implements Listener {
 				
 				if(enableRewind) {
 					
-//					cycle();
-//					create1min();
-					Bukkit.broadcastMessage("Starting");
-
-					Bukkit.broadcastMessage("Ending");
-					
-					
 					loadouts++;
+					
+					if(loadouts != 1) {
+						if(loadouts > 10) {
+							timeStamps.remove(1);
+							pastEntities.remove(1);
+							loadouts--;
+						}
+						p.sendMessage(ChatColor.GREEN + "A new timestamp has been created");
+						HashMap<Player, TimeStamp> timeStamp = new HashMap<Player, TimeStamp>();
+						
+						for(Player player : Bukkit.getOnlinePlayers()) {
+							timeStamp.put(player, new TimeStamp(plugin.gloves.get(findPlayer(player))));
+						}
+						
+						timeStamps.add(timeStamp);
+						
+						
+						pastEntities.add(new PastEntities(world));
+					}
+					
+					
 					
 				}
 
@@ -2410,7 +2494,8 @@ public class Reality implements Listener {
 			}
 			
 			
-		}, 0, 1200L);
+		}, 0L, 200L);
+		
 	}
 	
 	public void acquiredSoulStone(Player p) {

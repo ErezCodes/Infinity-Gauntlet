@@ -3,7 +3,6 @@ package me.erez.IG;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.apache.commons.net.ftp.FTPClient;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -26,7 +25,6 @@ public class Main extends JavaPlugin{
 	public ItemStack TimeStone = createGuiItem(Material.EMERALD, ChatColor.GREEN + "Time Stone", ChatColor.DARK_GREEN + "Infinite realities");
 	public ItemStack SoulStone = createGuiItem(Material.ORANGE_DYE, ChatColor.GOLD + "Soul Stone", "What did it cost?");
 	
-	public FTPClient ftpClient;
 	
 	public ArrayList<Glove> gloves = new ArrayList<Glove>();
 	
@@ -37,7 +35,7 @@ public class Main extends JavaPlugin{
 		new getStones(this);
 		new getGlove(this);
 		new printGlovers(this);
-		new Empty10min();
+		
 		
 		new Reality(this);
 		

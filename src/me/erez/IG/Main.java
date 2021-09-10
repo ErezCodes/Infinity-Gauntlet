@@ -11,12 +11,21 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import me.erez.IG.Files.DataManager;
+import me.erez.IG.Stones.ClickNPC;
+import me.erez.IG.Stones.PacketReader;
 import me.erez.IG.Stones.Reality;
+import me.erez.IG.commands.ToggleFallDamage;
+import me.erez.IG.commands.addNPC;
 import me.erez.IG.commands.getGlove;
 import me.erez.IG.commands.getStones;
 import me.erez.IG.commands.printGlovers;
+import me.erez.IG.commands.removeNPCS;
+import me.erez.IG.commands.summonWolf;
 
 public class Main extends JavaPlugin{
+	
+	public DataManager data;
 	
 	public ItemStack SpaceStone = createGuiItem(Material.LAPIS_LAZULI, ChatColor.BLUE + "Space Stone", ChatColor.DARK_BLUE + "I'm everywhere");
 	public ItemStack MindStone = createGuiItem(Material.YELLOW_DYE, ChatColor.YELLOW + "Mind Stone", ChatColor.GOLD + "The ultimate manipulator");
@@ -25,6 +34,7 @@ public class Main extends JavaPlugin{
 	public ItemStack TimeStone = createGuiItem(Material.EMERALD, ChatColor.GREEN + "Time Stone", ChatColor.DARK_GREEN + "Infinite realities");
 	public ItemStack SoulStone = createGuiItem(Material.ORANGE_DYE, ChatColor.GOLD + "Soul Stone", "What did it cost?");
 	
+	public boolean falldamage = false;
 	
 	public ArrayList<Glove> gloves = new ArrayList<Glove>();
 	
@@ -32,21 +42,58 @@ public class Main extends JavaPlugin{
 	
 	@Override
 	public void onEnable() {
+		
+		if(!Bukkit.getOnlinePlayers().isEmpty()) {
+			for(Player player : Bukkit.getOnlinePlayers()) {
+				PacketReader reader = new PacketReader();
+				reader.inject(player);
+			}
+		}
+		
+		this.data = new DataManager(this);
+		
 		new getStones(this);
 		new getGlove(this);
 		new printGlovers(this);
-		
+		new ToggleFallDamage(this);
+		new addNPC(this);
+		new removeNPCS(this);
+		new summonWolf(this);
 		
 		new Reality(this);
+		new ClickNPC(this);
+		
+		data.reloadConfig();
 		
 		for(Player p : Bukkit.getOnlinePlayers()) {
-			gloves.add(new Glove(p, "none", false, false, false, false, false, false));
+			
+			Glove glove = new Glove(p, "none", false, false, false, false, false, false);
+			
+			String uuid = p.getUniqueId().toString();
+			
+			glove.setEquipped((String) data.getConfig().get("players." + uuid + ".equipped"));
+			glove.setSpace((Boolean) data.getConfig().get("players." + uuid + ".hasSpace"));
+			glove.setMind((Boolean) data.getConfig().get("players." + uuid + ".hasMind"));
+			glove.setReality((Boolean) data.getConfig().get("players." + uuid + ".hasReality"));
+			glove.setPower((Boolean) data.getConfig().get("players." + uuid + ".hasPower"));
+			glove.setTime((Boolean) data.getConfig().get("players." + uuid + ".hasTime"));
+			glove.setSoul((Boolean) data.getConfig().get("players." + uuid + ".hasSoul"));
+			
+			gloves.add(glove);
+			
 		}
+
+
 		
 		
-		
-		
-		
+	}
+	
+	@Override
+	public void onDisable() {
+		for(Player player : Bukkit.getOnlinePlayers()) {
+			PacketReader reader = new PacketReader();
+			reader.uninject(player);
+		}
 	}
 
 	
@@ -65,4 +112,14 @@ public class Main extends JavaPlugin{
 
         return item;
     }
+	
+	public int findPlayer(Player p) {
+
+		for (int i = 0; i < gloves.size(); i++) {
+			if (gloves.get(i).getPlayer().equals(p))
+				return i;
+		}
+
+		return -1;
+	}
 }

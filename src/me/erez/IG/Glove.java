@@ -1,6 +1,8 @@
 package me.erez.IG;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+
 
 import me.erez.IG.Main;
 import net.md_5.bungee.api.ChatColor;
@@ -8,6 +10,7 @@ import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -32,6 +35,11 @@ public class Glove {
 	private boolean hasTime;
 	private boolean hasSoul;
 	private String equipped;
+	
+	private ArrayList<String> cycle = new ArrayList<String>();
+	private ArrayList<String> cycleNames = new ArrayList<String>();
+	private int position = -1;
+	//selfShort, targetedShort, global, astral, phaseShift, blockChanger, itemChanger, Power, Time, Rewind
 	
 	private ItemStack blueGlass = createGuiItem(Material.BLUE_STAINED_GLASS_PANE, " ", " ");
 	private ItemStack yellowGlass = createGuiItem(Material.YELLOW_STAINED_GLASS_PANE, " ", " ");
@@ -66,6 +74,7 @@ public class Glove {
 		hasTime = time; //Green, emerald
 		hasSoul = soul; //Orange
 		
+		fillCycle();
 		
 	}
 	
@@ -96,7 +105,7 @@ public class Glove {
 		
 		
 		ItemStack yellow = yellowGlass;
-		if(equipped.equals("Soul")) {
+		if(equipped.equals("astral") || equipped.equalsIgnoreCase("phaseShift")) {
 			addEmptyEnchantment(yellow);
 		}
 		else {
@@ -186,7 +195,7 @@ public class Glove {
 			inventory.setItem(40, TimeStone);
 		}
 		ItemStack orange = orangeGlass;
-		if(equipped.equals("Soul")) {
+		if(equipped.equals("limbo") || equipped.equals("manipulate")) {
 			addEmptyEnchantment(orange);
 		}
 		
@@ -262,6 +271,490 @@ public class Glove {
 				"\n" + ChatColor.YELLOW + (hasMind) + "\n" + ChatColor.DARK_RED + (hasReality) + "\n" + ChatColor.DARK_PURPLE + (hasPower)
 				+ "\n" + ChatColor.DARK_GREEN + (hasTime) + "\n" + ChatColor.GOLD + (hasSoul);
  	}
+	
+	public void fillCycle() {
+		cycle.add("selfShort"); //0
+		cycle.add("targetedShort"); //1
+		cycle.add("global"); //2
+		cycle.add("astral"); //3
+		cycle.add("phaseShift"); //4
+		cycle.add("blockChanger"); //5
+		cycle.add("itemChanger"); //6
+		cycle.add("Power"); //7
+		cycle.add("Time"); //8
+		cycle.add("Rewind"); //9
+		cycle.add("limbo"); //10
+		cycle.add("manipulate"); //11
+		
+		cycleNames.add(ChatColor.UNDERLINE + "Self close teleportation"); //0
+		cycleNames.add(ChatColor.UNDERLINE + "Targeted close teleportation"); //1
+		cycleNames.add(ChatColor.UNDERLINE + "Global teleportation"); //2
+		cycleNames.add(ChatColor.UNDERLINE + "Astral vision"); //3
+		cycleNames.add(ChatColor.UNDERLINE + "Phase shift"); //4
+		cycleNames.add(ChatColor.UNDERLINE + "Block changer"); //5
+		cycleNames.add(ChatColor.UNDERLINE + "Item changer"); //6
+		cycleNames.add(ChatColor.UNDERLINE + "Power projectile"); //7
+		cycleNames.add(ChatColor.UNDERLINE + "Time freezer"); //8
+		cycleNames.add(ChatColor.UNDERLINE + "Time rewinder"); //9
+		cycleNames.add(ChatColor.UNDERLINE + "Limbo"); //10
+		cycleNames.add(ChatColor.UNDERLINE + "Manipulator"); //11
+		
+		
+		
+	}
+	
+	public void cycle(boolean reverse) {
+		
+		if(position == -1) {
+			if(hasSpace) {
+				if(reverse) 
+					position = 2;
+				
+				else position = 0;
+				
+				equipped = cycle.get(position);
+				
+				player.sendMessage(ChatColor.BLUE + message(cycleNames.get(position)));
+				
+				return;
+			}
+			
+			
+			if(hasMind) {
+				
+				if(reverse)
+					position = 4;
+				else position = 3;
+				
+				equipped = cycle.get(position);
+				
+				player.sendMessage(ChatColor.YELLOW + message(cycleNames.get(position)));
+				
+				return;
+			}
+			
+			if(hasReality) {
+				
+				if(reverse)
+					position = 6;
+				else position = 5;
+				
+				equipped = cycle.get(position);
+				
+				player.sendMessage(ChatColor.RED + message(cycleNames.get(position)));
+				
+				return;
+				
+			}
+			
+			if(hasPower) {
+				
+				equipped = cycle.get(7);
+				
+				player.sendMessage(ChatColor.DARK_PURPLE + message(cycleNames.get(position)));
+				
+				return;
+				
+			}
+			
+			if(hasTime) {
+				
+				if(reverse)
+					position = 9;
+				else position = 8;
+				
+				equipped = cycle.get(position);
+				
+				player.sendMessage(ChatColor.DARK_GREEN + message(cycleNames.get(position)));
+				
+				return;
+				
+			}
+			
+			if(hasSoul) {
+				
+				if(reverse)
+					position = 11;
+				else position = 10;
+				
+				equipped = cycle.get(position);
+				
+				player.sendMessage(ChatColor.GOLD + message(cycleNames.get(position)));
+				
+			}
+			
+			player.sendMessage("You do not have any stones");
+			
+			return;
+			
+			
+			
+		}
+		//space
+		if(position <= 2) {
+			
+			if(position == 1) {
+				
+				if(reverse) 
+					position = 0;
+				else position = 2;
+				
+				equipped = cycle.get(position);
+				player.sendMessage(message(cycleNames.get(position)));
+				return;
+				
+			}
+			
+			if(position == 0) {
+				
+				if(!reverse) {
+					position++;
+					equipped = cycle.get(position);
+					player.sendMessage(message(cycleNames.get(position)));
+					return;
+				}
+				
+				if(hasSoul) 
+					position = 11;			
+				else if(hasTime) 
+					position = 9;
+				else if(hasPower)
+					position = 7;
+				else if(hasReality)
+					position = 6;
+				else if(hasMind)
+					position = 4;
+				else 
+					position = 2;
+				
+				equipped = cycle.get(position);
+				player.sendMessage(message(cycleNames.get(position)));
+				return;
+				
+			}
+			
+			//2
+			if(reverse) {
+				position = 1;
+			
+				equipped = cycle.get(position);
+				player.sendMessage(message(cycleNames.get(position)));
+				return;
+			}
+			
+			if(hasMind)
+				position = 3;
+			else if(hasReality) 
+				position = 5;
+			else if(hasPower)
+				position = 7;
+			else if(hasTime)
+				position = 8;
+			else if(hasSoul)
+				position = 10;
+			else 
+				position = 0;
+			
+			equipped = cycle.get(position);
+			player.sendMessage(message(cycleNames.get(position)));
+			return;
+			
+		}
+		//mind
+		if(position <= 4) {
+			
+			if(position == 3) {
+				
+				if(!reverse) {
+					position++;
+					
+					equipped = cycle.get(position);
+					player.sendMessage(message(cycleNames.get(position)));
+					return;
+				}
+				
+				if(hasSpace)
+					position = 2;
+				else if(hasSoul)
+					position = 11;
+				else if(hasTime)
+					position = 9;
+				else if(hasPower)
+					position = 7;
+				else if(hasReality)
+					position = 6;
+				else
+					position = 4;
+				
+				equipped = cycle.get(position);
+				player.sendMessage(message(cycleNames.get(position)));
+				return;
+				
+			}
+		
+			//4
+			if(reverse) {
+				position--;
+			
+				equipped = cycle.get(position);
+				player.sendMessage(message(cycleNames.get(position)));
+				return;
+			}
+			
+			if(hasReality) 
+				position = 5;
+			else if(hasPower)
+				position = 7;
+			else if(hasTime)
+				position = 8;
+			else if(hasSoul)
+				position = 10;
+			else if(hasSpace)
+				position = 0;
+			else
+				position = 3;
+			
+			equipped = cycle.get(position);
+			player.sendMessage(message(cycleNames.get(position)));
+			return;
+				
+			
+			
+		}
+		//reality
+		if(position <= 6) {
+			
+			if(position == 5) {
+				
+				if(!reverse) {
+					position++;
+					
+					equipped = cycle.get(position);
+					player.sendMessage(message(cycleNames.get(position)));
+					return;
+				}
+				
+				if(hasMind)
+					position = 4;
+				else if(hasSpace) 
+					position = 2;
+				else if(hasSoul)
+					position = 11;
+				else if(hasTime)
+					position = 9;
+				else if(hasPower)
+					position = 7;
+				else 
+					position = 6;
+
+				equipped = cycle.get(position);
+				player.sendMessage(message(cycleNames.get(position)));
+				return;
+				
+			}
+			
+			//6
+			if(reverse) {
+				position--;
+				
+				equipped = cycle.get(position);
+				player.sendMessage(message(cycleNames.get(position)));
+				return;
+			}
+			
+			if(hasPower)
+				position = 7;
+			else if(hasTime)
+				position = 8;
+			else if(hasSoul)
+				position = 10;
+			else if(hasSpace)
+				position = 0;
+			else if(hasMind)
+				position = 3;
+			else
+				position = 5;
+			
+			equipped = cycle.get(position);
+			player.sendMessage(message(cycleNames.get(position)));
+			return;
+			
+		}
+		//power
+		if(position == 7) {
+		
+			if(reverse) {
+				if(hasReality)
+					position = 6;
+				else if(hasMind)
+					position = 4;
+				else if(hasSpace)
+					position = 2;
+				else if(hasSoul)
+					position = 11;
+				else if(hasTime)
+					position = 9;
+				
+				equipped = cycle.get(position);
+				player.sendMessage(message(cycleNames.get(position)));
+				return;
+			}
+			
+			if(hasTime)
+				position = 8;
+			else if(hasSoul)
+				position = 10;
+			else if(hasSpace)
+				position = 0;
+			else if(hasMind)
+				position = 3;
+			else if(hasReality)
+				position = 5;
+			
+			equipped = cycle.get(position);
+			player.sendMessage(message(cycleNames.get(position)));
+			return;
+			
+		}
+		//time
+		if(position <= 9) {
+			
+			if(position == 8) {
+				
+				if(!reverse) {
+					position++;
+					
+					equipped = cycle.get(position);
+					player.sendMessage(message(cycleNames.get(position)));
+					return;
+				}
+				
+				if(hasPower)
+					position = 7;
+				else if(hasReality)
+					position = 6;
+				else if(hasMind)
+					position = 4;
+				else if(hasSpace)
+					position = 2;
+				else if(hasSoul)
+					position = 11;
+				else position = 9;
+				
+				equipped = cycle.get(position);
+				player.sendMessage(message(cycleNames.get(position)));
+				return;
+				
+				
+			}
+			
+			//9
+			if(reverse) {
+				position--;
+				
+				equipped = cycle.get(position);
+				player.sendMessage(message(cycleNames.get(position)));
+				return;
+			}
+			
+			if(hasSoul)
+				position = 10;
+			else if(hasSpace)
+				position = 0;
+			else if(hasMind)
+				position = 3;
+			else if(hasReality)
+				position = 5;
+			else if(hasPower)
+				position = 7;
+			else
+				position = 8;
+			
+			equipped = cycle.get(position);
+			player.sendMessage(message(cycleNames.get(position)));
+			return;
+			
+		}
+		//soul
+		if(position <= 11) {
+			
+			if(position == 10) {
+				
+				if(!reverse) {
+					position++;
+					
+					equipped = cycle.get(position);
+					player.sendMessage(message(cycleNames.get(position)));
+					return;
+				}
+				
+				if(hasTime)
+					position = 9;
+				else if(hasPower)
+					position = 7;
+				else if(hasReality)
+					position = 6;
+				else if(hasMind)
+					position = 4;
+				else if(hasSpace)
+					position = 2;
+				else
+					position = 11;
+				
+				equipped = cycle.get(position);
+				player.sendMessage(message(cycleNames.get(position)));
+				return;
+			}
+			
+			//11
+			if(reverse) {
+				position--;
+				
+				equipped = cycle.get(position);
+				player.sendMessage(message(cycleNames.get(position)));
+				return;
+			}
+			
+			if(hasSpace) 
+				position = 0;
+			else if(hasMind)
+				position = 3;
+			else if(hasReality)
+				position = 5;
+			else if(hasPower)
+				position = 7;
+			else if(hasTime)
+				position = 8;
+			else
+				position = 10;
+			
+			equipped = cycle.get(position);
+			player.sendMessage(message(cycleNames.get(position)));
+			
+			
+		}
+		
+	}
+	
+	public String message(String ability) {
+		ChatColor color = ChatColor.WHITE;
+		if(position <= 2)
+			color = ChatColor.BLUE;
+		else if(position <= 4)
+			color = ChatColor.YELLOW;
+		else if(position <= 6)
+			color = ChatColor.RED;
+		else if(position == 7)
+			color = ChatColor.DARK_PURPLE;
+		else if(position <= 9)
+			color = ChatColor.DARK_GREEN;
+		else if(position <= 11)
+			color = ChatColor.GOLD;
+		
+		player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1, 1);
+			
+		return color + "You have equipped the " + ability + " ability";
+	}
 	
 	//sets
 	

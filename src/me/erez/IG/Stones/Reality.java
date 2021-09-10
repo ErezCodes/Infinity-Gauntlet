@@ -8,10 +8,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
+import java.util.Stack;
+import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
+import org.bukkit.EntityEffect;
 import org.bukkit.GameMode;
 import org.bukkit.GameRule;
 //import org.bukkit.ChatColor;
@@ -19,6 +23,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Server;
+import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.TreeType;
 import org.bukkit.World;
@@ -26,54 +31,86 @@ import org.bukkit.WorldCreator;
 import org.bukkit.block.Block;
 import org.bukkit.craftbukkit.v1_16_R3.entity.CraftPlayer;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Creeper;
+import org.bukkit.entity.Egg;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Ghast;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.PigZombie;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Snowball;
+import org.bukkit.entity.Wolf;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.EntityTargetEvent;
+import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
+import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerEggThrowEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
+import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.util.Vector;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 
 import me.erez.IG.Glove;
 import me.erez.IG.Main;
+import me.erez.IG.NPC;
 import me.erez.IG.PastEntities;
 import me.erez.IG.TimeStamp;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.minecraft.server.v1_16_R3.EntityPlayer;
 import net.minecraft.server.v1_16_R3.PacketPlayOutEntityDestroy;
+import net.minecraft.server.v1_16_R3.PacketPlayOutPlayerInfo;
+import net.minecraft.server.v1_16_R3.PlayerConnection;
 
 import org.bukkit.event.player.PlayerInteractEvent;
 
@@ -85,13 +122,17 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.lang.annotation.Target;
+import java.net.URL;
 
 //variables
 
 public class Reality implements Listener {
 
 	private Main plugin;
+	private Random random = new Random();
 	private Material mats[];
 	Set<Material> transparent = new HashSet<Material>();
 
@@ -100,9 +141,10 @@ public class Reality implements Listener {
 	private int rewindMinutes = -1;
 	private int rewindTask;
 	private World world = Bukkit.getWorlds().get(0);
+	private World world2 = Bukkit.getWorlds().get(1);
 	
-	private ArrayList<HashMap<Player, TimeStamp>> timeStamps = new ArrayList<HashMap<Player, TimeStamp>>();
-	private ArrayList<PastEntities> pastEntities = new ArrayList<PastEntities>();
+	private Stack<HashMap<Player, TimeStamp>> timeStamps = new Stack<HashMap<Player, TimeStamp>>();
+	private Stack<PastEntities> pastEntities = new Stack<PastEntities>();
 	
 
 	private String missingPower = "You must have the " + ChatColor.DARK_PURPLE + "Power Stone " + ChatColor.WHITE + "in order to use this feature!";
@@ -150,13 +192,50 @@ public class Reality implements Listener {
 	private boolean step2 = false;
 	
 
+	//Mind variables
+	private int ghostTask;
+	private int ghostTaskCD;
+	private double ghostCD = 0.00;
+	private boolean ghostOnCD = false;
+	
+	
 	//Power variables
 	
 	private ItemStack powerStar = null;
 	private ItemStack powerSword = null;
 	private boolean powerEffect = true;
 
+	//Soul variables
 	
+	private Player limboVictim = null;
+	private Location limboVictimLocation = null;
+	private double victimHealth;
+	private Player shooter = null;
+	private boolean shooterPower = false;
+	private boolean victimDeath = false;
+	
+	private ArrayList<PigZombie> pigzombies = new ArrayList<PigZombie>();
+	private ArrayList<Ghast> ghasts = new ArrayList<Ghast>();
+	
+	private ItemStack[] limboVictimInv = null;
+	
+	private Inventory everyoneInvSoul = null;
+	private Inventory manChoice = null;
+	private Player manVictim = null;
+	private int victimID;
+	
+	
+	private ArrayList<Sound> scarySounds = new ArrayList<>();
+	
+	private UUID eggUUID = null;
+	private boolean eggBoolean = false;
+	
+	private int eggTask;
+	private int eggCDTask;
+	private double eggCD = 0.00;
+	
+	private int wave1task;
+	private int wave2task;
 	
 	//Time variables
 	private ItemStack freezeTimeItem = null;
@@ -213,6 +292,8 @@ public class Reality implements Listener {
 	private int snowShoot;
 	
 	private int freezeTask;
+	
+	private int voidtask;
 	
 	//booleans
 	boolean projectileBoolean = false;
@@ -273,12 +354,20 @@ public class Reality implements Listener {
 		
 		loadBlocks();
 		loadItems();
-
+		
+		
+		scarySounds.add(Sound.ENTITY_GHAST_SCREAM);
+		scarySounds.add(Sound.ENTITY_PHANTOM_SWOOP);
+		
 		
 		
 
 	}
 
+	
+	
+	
+	
 	
 	
 	
@@ -287,23 +376,61 @@ public class Reality implements Listener {
 	
 	
 	// Events // Events // Events // Events // Events // Events // Events // Events 
-
-	
-	
-	
-	
-	
 	
 	@EventHandler
 	public void join(PlayerJoinEvent event) {
+		
+		PacketReader reader = new PacketReader();
+		reader.inject(event.getPlayer());
+		
 		Glove glove = new Glove(event.getPlayer(), "none", false, false, false, false, false, false);
 		plugin.gloves.add(glove);
+		
+		Player player = event.getPlayer();
+		String uuid = player.getUniqueId().toString();
+		
+		this.plugin.data.reloadConfig();
+		if(!(this.plugin.data.getConfig().contains("players." + uuid))) {
+				
+			this.plugin.data.getConfig().set("players." + uuid + ".equipped",  "none");
+			this.plugin.data.getConfig().set("players." + uuid + ".hasSpace", false);
+			this.plugin.data.getConfig().set("players." + uuid + ".hasMind", false);
+			this.plugin.data.getConfig().set("players." + uuid + ".hasReality", false);
+			this.plugin.data.getConfig().set("players." + uuid + ".hasPower", false);
+			this.plugin.data.getConfig().set("players." + uuid + ".hasTime", false);
+			this.plugin.data.getConfig().set("players." + uuid + ".hasSoul", false);
+			
+			this.plugin.data.saveConfig();
+			return;
+		}
+		
+		glove.setEquipped((String) this.plugin.data.getConfig().get("players." + uuid + ".equipped"));
+		glove.setSpace((Boolean) this.plugin.data.getConfig().get("players." + uuid + ".hasSpace"));
+		glove.setMind((Boolean) this.plugin.data.getConfig().get("players." + uuid + ".hasMind"));
+		glove.setReality((Boolean) this.plugin.data.getConfig().get("players." + uuid + ".hasReality"));
+		glove.setPower((Boolean) this.plugin.data.getConfig().get("players." + uuid + ".hasPower"));
+		glove.setTime((Boolean) this.plugin.data.getConfig().get("players." + uuid + ".hasTime"));
+		glove.setSoul((Boolean) this.plugin.data.getConfig().get("players." + uuid + ".hasSoul"));
+		this.plugin.data.saveConfig();
+		
+		if(NPC.getNPCS() == null)
+			return;
+		if(NPC.getNPCS().isEmpty())
+			return;
+		NPC.addJoinPacket(player);
+			
+		
 
 	}
 
 	@EventHandler
 	public void quit(PlayerQuitEvent event) {
+		
+		PacketReader reader = new PacketReader();
+		reader.uninject(event.getPlayer());
+		
 		plugin.gloves.remove(findPlayer(event.getPlayer()));
+		
 	}
 
 	@EventHandler()
@@ -531,7 +658,79 @@ public class Reality implements Listener {
 			
 		}
 		
-		
+		//limbo
+		if((lore.get(0).equals(ChatColor.DARK_RED + "Must collect them all...") &&
+			(event.getAction().equals(Action.LEFT_CLICK_AIR) || event.getAction().equals(Action.LEFT_CLICK_BLOCK)) 
+				&& plugin.gloves.get(findPlayer(p)).getEquipped().equals("limbo")
+				&& (p.getOpenInventory().getType() == InventoryType.CRAFTING || p.getOpenInventory().getType() == InventoryType.CREATIVE)
+				&& (p.getInventory().getItemInMainHand().getType().equals(Material.AIR) || p.getInventory().getItemInMainHand().getType().equals(null)))){
+			
+			if(eggBoolean) {
+				double cd = 60 - eggCD/20;
+				String cdString = new DecimalFormat("#.#").format(cd);
+				p.sendMessage((ChatColor.RED + "Cooldown! Please wait ") + (ChatColor.DARK_RED + cdString + "s") );
+				return;
+			}
+			
+			Egg egg = (Egg) p.getWorld().spawn(p.getEyeLocation(),  Egg.class);
+			egg.setBounce(false);
+			
+			eggUUID = egg.getUniqueId();
+			
+			p.getWorld().playSound(p.getLocation(), Sound.ENTITY_WITHER_SHOOT, 1, 1);
+			
+			BukkitScheduler sched = p.getServer().getScheduler();
+			
+			for(Player player : Bukkit.getServer().getOnlinePlayers()) {
+				PacketPlayOutEntityDestroy packet = new PacketPlayOutEntityDestroy(egg.getEntityId());
+				
+				((CraftPlayer) player).getHandle().playerConnection.sendPacket(packet);;
+                egg.setShooter((ProjectileSource) ((LivingEntity) p));
+                egg.setVelocity(p.getEyeLocation().getDirection().multiply(3D));
+                egg.setBounce(false);
+                egg.setSilent(true);
+			}
+			
+			eggBoolean = true;
+			
+			eggTask = sched.scheduleSyncRepeatingTask(plugin, new Runnable() {
+				
+				@Override
+				public void run() {
+					Location eggloc = egg.getLocation();
+					
+					if(egg.isDead() || egg.getTicksLived() >= 100) {
+						
+						sched.cancelTask(eggTask);
+						return;
+						
+					}
+					
+					followTrail(eggloc, eggloc.getDirection(), Particle.REDSTONE, 7f, new Particle.DustOptions(Color.ORANGE, 1));
+					followTrail(eggloc, eggloc.getDirection(), Particle.REDSTONE, 7f, new Particle.DustOptions(Color.BLACK, 1));
+
+					
+				}
+				
+			}, 0, 1);
+			
+			eggCDTask = sched.scheduleSyncRepeatingTask(plugin, new Runnable() {
+				
+				@Override
+				public void run() {
+					eggCD += 2;
+					if(eggCD == 1200) {
+						eggBoolean = false;
+						eggCD = 0.00;
+						sched.cancelTask(eggCDTask);
+						eggUUID = null;
+					}
+				}
+				
+			}, 0, 2L);
+			
+			
+		}
 		
 		
 		//global teleport
@@ -543,7 +742,7 @@ public class Reality implements Listener {
 			
 			
 			globalPlayer.teleport(global);
-			
+			return;
 			
 		}
 		
@@ -562,6 +761,7 @@ public class Reality implements Listener {
 			Freezer = p;
 			Bukkit.broadcastMessage(ChatColor.GREEN + p.getName() + " has frozen time for " + ChatColor.DARK_GREEN + freezeDuration + " seconds");
 			stopTime();
+			return;
 			
 		}
 		
@@ -598,24 +798,162 @@ public class Reality implements Listener {
 		}
 		*/
 		
-		//let everyone know that the server was rewinded
-		for(Player player : Bukkit.getOnlinePlayers()) {
-			if(player != p)
-				player.sendTitle(ChatColor.GREEN + p.getName() + " has reversed time in " + rewindMinutes + " minutes!", "", 1, 6, 1);
+		if(rewindMinutes < 0) {
+			p.sendMessage(ChatColor.GREEN + "Invalid rewind");
+			return;
+		}
+			
+		Bukkit.broadcastMessage(ChatColor.GREEN + "It's rewind time!");	
+		
+		for(int i = 0; i <= rewindMinutes; i++) {
+			
+			boolean last = false;
+			
+			Bukkit.broadcastMessage("Working on loadout number: " + i );
+			Bukkit.broadcastMessage("Is it the last loadout? " + last);
+			
+			if(i == rewindMinutes) {
+				last = true;
+			}
+			
+			Bukkit.broadcastMessage("Is it the last loadout now? " + last);
+			
+			HashMap<Player, TimeStamp> hash = timeStamps.pop();
+			
+			Bukkit.broadcastMessage("popped Hash");
+			
+			PastEntities past = pastEntities.pop();
+			
+			Bukkit.broadcastMessage("popped pastEntities");
+			
+			Bukkit.broadcastMessage("restoring exploded blocks");
+			past.restoreExplodedBlocks();
+			Bukkit.broadcastMessage("restoring burnt blocks");
+			past.restoreBurntBlocks();
+			
+			for(Player player : hash.keySet()) {
+				TimeStamp timeStamp = hash.get(player);
+				timeStamp.restoreBrokenBlocks();
+				Bukkit.broadcastMessage("restored broken blocks");
+				timeStamp.restorePlacedBlocks();
+				Bukkit.broadcastMessage("restored placed blocks");
+				
+
+				
+
+				
+				if(last) {
+					
+					player.sendTitle(ChatColor.GREEN + "Server rewinded"
+							, ChatColor.DARK_GREEN + "The server has been rewinded by " + rewindMinutes + " minutes", 20, 140, 20);
+					
+					Bukkit.broadcastMessage("sent a title");
+					
+					Bukkit.broadcastMessage("Restoring Players for the last time");
+					timeStamp.restoreGlove();
+					Bukkit.broadcastMessage("restored a player's glove");
+					timeStamp.restorePlayer();
+					Bukkit.broadcastMessage("restored a player");
+
+				}
+			}
+			
+
+
+			if(last) {
+
+				past.restoreChests();
+				Bukkit.broadcastMessage("restored chests");
+				past.restoreEntities();
+				Bukkit.broadcastMessage("restored entities");
+				
+				//plugin.gloves.get(findPlayer(p)).setEquipped("none");
+				//Bukkit.broadcastMessage("set caster's stone to 'none'");
+				timeStamps.empty();
+				Bukkit.broadcastMessage("emptied timestamps");
+				pastEntities.empty();
+				Bukkit.broadcastMessage("emptied pastEntities");
+				
+				HashMap<Player, TimeStamp> timeStamp = new HashMap<Player, TimeStamp>();			
+				for(Player player : Bukkit.getOnlinePlayers()) {
+					timeStamp.put(player, new TimeStamp(plugin.gloves.get(findPlayer(player))));
+					Bukkit.broadcastMessage("generated new HashMap<Player, TimeStamp>");
+				}
+				timeStamps.push(timeStamp);
+				Bukkit.broadcastMessage("pushed the timeStamp to the HashMap<Player, TimeStamp>");
+				pastEntities.push(new PastEntities(world));
+				Bukkit.broadcastMessage("pushed a new pastEntities");
+			}
+			
+
 			
 		}
+			
+
 
 		
 			
 			
 			
 		}
+		
+		//Phase shift
+		
+		if((lore.get(0).equals(ChatColor.DARK_RED + "Must collect them all...") &&
+				(event.getAction().equals(Action.LEFT_CLICK_AIR) || event.getAction().equals(Action.LEFT_CLICK_BLOCK)) 
+					&& plugin.gloves.get(findPlayer(p)).getEquipped().equals("phaseShift")
+					&& (p.getOpenInventory().getType() == InventoryType.CRAFTING || p.getOpenInventory().getType() == InventoryType.CREATIVE)
+					&& (p.getInventory().getItemInMainHand().getType().equals(Material.AIR) || p.getInventory().getItemInMainHand().getType().equals(null)))){
+		
+			if(ghostOnCD) {
+				double cd = 30 - ghostCD/20;
+				
+				String cdString = new DecimalFormat("#.#").format(cd);
+				p.sendMessage((ChatColor.RED + "Cooldown! Please wait ") + (ChatColor.DARK_RED + cdString + "s") );
+				return;
+			}
+				ghostOnCD = true;
+				BukkitScheduler sched = p.getServer().getScheduler();
+				ghostTaskCD = sched.scheduleSyncRepeatingTask(plugin, new Runnable(){
+					
+					
+					
+					@Override
+					public void run() {
+						
+						
+						if(ghostCD == 600) {
+							ghostCD = 0;
+							ghostOnCD = false;
+							sched.cancelTask(ghostTaskCD);
+							return;
+						}
+						
+						ghostCD += 2;
+						
+					}
+					
+				}, 0, 2L);
+				phaseShift(p);
+				return;
+			
+			
+			
+		}
+			
+
+
+		
+			
+			
+			
+		
+		
 		
 		
 
 	}
 
-	
 
 	@SuppressWarnings("deprecation")
 	@EventHandler
@@ -627,6 +965,7 @@ public class Reality implements Listener {
 			p.sendMessage(ChatColor.RED + "You can't do that while time is frozen");
 			return;
 		}
+
 		
 		// gloves
 		if (e.getView().getTitle().equals(ChatColor.DARK_GREEN + (p.getName() + "'s glove"))) {
@@ -1317,19 +1656,28 @@ public class Reality implements Listener {
 						addition = 14;
 					else addition = 10;
 					
-					removeEnchantments(rewindInv.getItem(rewindMinutes + addition));
+					rewindInv.getItem(rewindMinutes + addition).setType(Material.BOOK);
 					
 				}
 				
 				int amount = e.getCurrentItem().getAmount();
 				rewindMinutes = amount;
-				addEmptyEnchantment(e.getCurrentItem());
+				e.getCurrentItem().setType(Material.ENCHANTED_BOOK);
 
 			}
 			
 			if(e.getCurrentItem().equals(activate)) {
 				p.closeInventory();
-				p.sendMessage(ChatColor.GREEN + "Hit the air in order to go back in time with everyone");
+				
+				if(rewindMinutes < 0) {
+					p.sendMessage(ChatColor.RED + "Invalid rewind");
+					return;
+				}
+				
+				String s = "s";
+				if(rewindMinutes == 1)
+					s = "";
+				p.sendMessage(ChatColor.GREEN + "Success, hit the air in order to go back in time with everyone for " + rewindMinutes + " minute" + s);
 				plugin.gloves.get(findPlayer(p)).setEquipped("Rewind");
 			}
 			
@@ -1347,11 +1695,108 @@ public class Reality implements Listener {
 		
 
 		
+		//SOUL STONE //SOUL STONE //SOUL STONE 
 		
+		if(e.getInventory().equals(soulInv)) {
+			e.setCancelled(true);
+			
+			//limbo
+			if(e.getSlot() == 21) {
+				p.closeInventory();
+				plugin.gloves.get(findPlayer(p)).setEquipped("limbo");
+				String place = "the void";
+				if(plugin.gloves.get(findPlayer(p)).getPower()) {
+					place = "hell";
+				}
+				p.sendMessage(ChatColor.GOLD + "Hit a player with the limbo projectile in order to send him to " + place);
+				return;
+			}
+			
+			//manipulate
+			if(e.getSlot() == 23) {
+				generateEveryoneInvSoul(p);
+			}
+			
+			//disable
+			if(e.getCurrentItem().equals(disable)) {
+				plugin.gloves.get(findPlayer(p)).setEquipped("none");
+				p.sendMessage("You have disabled the soul stone");
+				plugin.gloves.get(findPlayer(p)).generateInventory();
+				return;
+			}
+		}
+		
+		if(e.getInventory().equals(everyoneInvSoul)) {
+			e.setCancelled(true);
+			
+			SkullMeta meta = (SkullMeta)e.getCurrentItem().getItemMeta();
+			manVictim = (Player)meta.getOwningPlayer();
+			
+			generateChooseManipulateInv(p);
+		}
+		
+		if(e.getInventory().equals(manChoice)) {
+			e.setCancelled(true);
+			
+			if(e.getRawSlot() == 0) {
+				generateSoulInv(p);
+				return;
+			}
+			
+			if(e.getRawSlot() == 3) {
+				intoxicatePlayer(manVictim);
+				p.closeInventory();
+				p.sendMessage(ChatColor.GOLD + manVictim.getName() + "'s soul has been intoxicated");
+				return;
+			}
+			
+			if(e.getRawSlot() == 4) {
+				blindPlayer(manVictim);
+				p.closeInventory();
+				p.sendMessage(ChatColor.GOLD + manVictim.getName() + " has been blinded");
+				return;
+			}
+			
+			if(e.getRawSlot() == 5) {
+				int rand = random.nextInt(3) + 1;
+				p.sendMessage(ChatColor.GOLD + manVictim.getName() + " has been scared");
+				p.closeInventory();
+				switch(rand) {
+					case 1:
+						dogAnimation(manVictim);
+						return;
+					case 2:
+						creeperAnimation(manVictim);
+						return;
+					case 3:
+						scarePlayer(manVictim);
+						return;
+						
+				}
+			}
+			
+			
+		}
+		
+		//MIND STONE //MIND STONE //MIND STONE
+		
+		if(e.getInventory().equals(mindInv)) {
+			e.setCancelled(true);
+			
+			if(e.getRawSlot() == 25) {
+				plugin.gloves.get(findPlayer(p)).setEquipped("phaseShift");
+				p.sendMessage(ChatColor.YELLOW + "Left click to beocme a ghost for 5 seconds");
+				p.closeInventory();
+				return;
+			}
+			
+		}
 		
 
 
 	}
+	
+	
 
 	@EventHandler
 	public void onInventoryDrag(final InventoryDragEvent e) {
@@ -1474,6 +1919,30 @@ public class Reality implements Listener {
 
 	}
 	
+	
+	@EventHandler
+	public void swapHands(PlayerSwapHandItemsEvent e) {
+		//cycle
+		Player player = e.getPlayer();
+		
+		String lore = e.getMainHandItem().getItemMeta().getLore().get(0);
+		
+		if(lore.equals(ChatColor.DARK_RED + "Must collect them all...") && e.getOffHandItem().getType().equals(Material.AIR) || e.getOffHandItem().equals(null)) {
+			
+			e.setCancelled(true);
+			boolean reverse = false;
+			if(player.isSneaking())
+				reverse = true;
+			
+			plugin.gloves.get(findPlayer(player)).cycle(reverse);
+			
+			
+		}
+		
+	}
+	
+	
+	
 	@EventHandler()
 	public void dropItem(PlayerDropItemEvent event) {
 		Player p = event.getPlayer();
@@ -1493,7 +1962,6 @@ public class Reality implements Listener {
 		}
 		
 	}
-
 
 
 	//global teleport prompter
@@ -1605,26 +2073,58 @@ public class Reality implements Listener {
 			
 		}
 		
+		/*
 		e.setCancelled(true);
 		p.sendMessage(timeStamps.size() + "");
 		p.sendMessage(pastEntities.size() + "");
-		
+		*/
 		
 	}
 	
 	@EventHandler
 	public void EntityDamageByEntity(EntityDamageByEntityEvent e) {
-		if(!(e.getDamager() instanceof Snowball)) return;
-		Snowball snowball = (Snowball) e.getDamager();
-        LivingEntity shooter = (LivingEntity) snowball.getShooter();
-        if (!(shooter instanceof Player)) return;
-        Player p = (Player) shooter;
-        
-        if (!plugin.gloves.get(findPlayer(p)).getEquipped().equals("Power")) return;
+		if(e.getDamager() instanceof Snowball) {
+			Snowball snowball = (Snowball) e.getDamager();
+	        LivingEntity shooter = (LivingEntity) snowball.getShooter();
+	        if (!(shooter instanceof Player)) return;
+	        Player p = (Player) shooter;
+	        
+	        if (!plugin.gloves.get(findPlayer(p)).getEquipped().equals("Power")) return;
+			
+	        e.setDamage(e.getDamage() + 15);
+	        return;
+		}
 		
-        e.setDamage(e.getDamage() + 15);
-		
+		if(e.getDamager() instanceof Egg) {
+			Egg egg = (Egg) e.getDamager();
+			LivingEntity damagee = (LivingEntity) e.getEntity();
+			if(!(damagee instanceof Player)) return;
+			
+			Player victim = (Player) e.getEntity();
+			
+			if(!egg.getUniqueId().equals(eggUUID)) return;
+			//Bukkit.broadcastMessage(victim.getName() + " was hit by the special egg");
+			
+			
+			shooter = (Player) egg.getShooter();
+			String where = "";
+			if(plugin.gloves.get(findPlayer(shooter)).getPower()) {
+				where = "hell";
+				shooterPower = true;
+			}
+			else {
+				where = "void";
+				shooterPower = false;
+			}
+			shooter.sendMessage(ChatColor.GOLD + "You have successfully sent " + victim.getName() + "'s soul to the " + where);
+			
+			tothevoid(victim);
+			
+			victim.getWorld().playSound(victim.getLocation(), Sound.ENTITY_WITHER_SPAWN, 5, 1);
+			
+		}
 	}
+	
 	
 	@EventHandler
 	public void ProjectileLaunch(ProjectileLaunchEvent e) {
@@ -1715,27 +2215,124 @@ public class Reality implements Listener {
 		
 		if(!enableRewind) return;
 		Player player = e.getPlayer();
-		timeStamps.get(timeStamps.size() - 1).get(player).getPlacedBlocks().add(e.getBlock().getLocation());
+		timeStamps.get(timeStamps.size() - 1).get(player).getBrokenBlocks().put(e.getBlock().getLocation(), e.getBlock().getType());
+		
+		//player.sendMessage("breakEvent triggered");
 		
 	}
 	
 	@EventHandler
-	public void blockPlace(BlockPlaceEvent event) {
-		
-		if (event.getItemInHand().getItemMeta().getLore().get(0).equals(ChatColor.DARK_RED + "Reality can be whatever I want")) {
-			
-			event.setCancelled(true);
-		}
+	public void blockPlace(BlockPlaceEvent e) {
 		
 		if(enableRewind) {
-			Player player = event.getPlayer();
-			timeStamps.get(timeStamps.size() - 1).get(player).getBrokenBlocks().put(event.getBlock().getLocation(), event.getBlock().getType());
+			Player player = e.getPlayer();
+			timeStamps.get(timeStamps.size() - 1).get(player).getPlacedBlocks().add(e.getBlockPlaced().getLocation());
+			//player.sendMessage("blockPlace triggered");
 		}
+		
+		if (e.getItemInHand().getItemMeta().getLore().get(0).equals(ChatColor.DARK_RED + "Reality can be whatever I want")) {
+			
+			e.setCancelled(true);
+		}
+		
+
 		
 		
 	}
 	
+	@EventHandler
+	public void kaboom(EntityExplodeEvent e) {
+		if(!enableRewind) return;
+		
+		PastEntities currentPastEntity = pastEntities.get(pastEntities.size() - 1);
+		HashMap<Location, Material> hashy = new HashMap<Location, Material>();
+		for(Block block : e.blockList()) {
+			hashy.put(block.getLocation(), block.getType());
+		}
 
+		currentPastEntity.addExplodedBlocks(hashy);
+			
+		
+	}
+	
+	@EventHandler
+	public void fired(BlockBurnEvent e) {
+		if(!enableRewind) return;
+		
+		PastEntities currentPastEntity = pastEntities.get(pastEntities.size() - 1);
+		HashMap<Location, Material> hashy = new HashMap<Location, Material>();
+		Block block = e.getBlock();
+		hashy.put(block.getLocation(), block.getType());
+
+		currentPastEntity.addBurntBlock(hashy);
+	}
+	
+	@EventHandler
+	public void antiFallDamage(EntityDamageEvent e) {
+		if(e.getCause().equals(DamageCause.FALL)) {
+			if(!(e.getEntity() instanceof Player)) return;
+			
+			if (plugin.falldamage) return;
+			
+			e.setCancelled(true);
+			
+		}
+	}
+	
+	//prevent the soul stone user from being targeted by mobs
+	@EventHandler
+	public void entityTargetLivingEntity(EntityTargetLivingEntityEvent e) {
+		if(!(e.getTarget() instanceof CraftPlayer)) return;
+		Player target = (Player) e.getTarget();
+		if(plugin.gloves.get(findPlayer(target)).getSoul()) {
+			e.setCancelled(true);
+		}
+	}
+	
+	@EventHandler
+	public void antiVoidDamage(EntityDamageEvent e) {
+		if(!(e.getEntity() instanceof Player))
+			return;
+		if(!e.getCause().equals(DamageCause.VOID))
+			return;
+		e.setCancelled(true);
+		
+	}
+	
+	@EventHandler
+	public void playerDeath(PlayerDeathEvent e) {
+		if(e.getEntity().equals(limboVictim))
+			victimDeath = true;
+	}
+	
+	
+	@EventHandler
+	public void eggThrow(PlayerEggThrowEvent e) {
+		if(e.getEgg().getUniqueId().equals(eggUUID))
+			e.setHatching(false);
+	}
+	
+	@EventHandler
+	public void teleport(PlayerTeleportEvent e) {
+		if(e.getCause().equals(TeleportCause.SPECTATE)) {
+			e.setCancelled(true);
+			e.getPlayer().sendMessage(ChatColor.RED + "This feature is disabled in this server");
+		}
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	
 	
@@ -1835,6 +2432,19 @@ public class Reality implements Listener {
 		
 	}
 
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	
 	//Space //Space //Space //Space //Space //Space //Space //Space //Space //Space //Space 
@@ -2036,6 +2646,11 @@ public class Reality implements Listener {
 	
 	
 	
+	
+	
+	
+	
+	
 	//Reality //Reality //Reality //Reality //Reality //Reality //Reality //Reality //Reality 
 	
 	public void addInventoryBar(Inventory inventory) {
@@ -2127,6 +2742,11 @@ public class Reality implements Listener {
 	
 	
 	
+	
+	
+	
+	
+	
 	//Time //Time //Time //Time //Time //Time //Time //Time //Time //Time //Time //Time //Time 
 	
 	public void generateTimeSettingsInventory(Player p) {
@@ -2150,16 +2770,21 @@ public class Reality implements Listener {
 	
 	public void generateRewindInv(Player p) {
 		
-		//Power adjustment
-		int pages;
-		int maximum;
+		if(loadouts < 1) {
+			p.sendMessage("There aren't any rewind slots available yet.");
+			p.sendMessage("Please wait up to 1 minute");
+			p.closeInventory();
+			return;
+		}
 		
-		if(plugin.gloves.get(findPlayer(p)).getPower()) {
+		//Power adjustment
+		boolean hasPower = plugin.gloves.get(findPlayer(p)).getPower();
+		int pages;
+		
+		if(hasPower) {
 			pages = 36;
 			rewindInv = Bukkit.createInventory(null, pages, ChatColor.GREEN + "Rewind");
-			if(loadouts > 11) {
-				maximum = 11;
-			} else maximum = loadouts;
+
 			
 			rewindInv.setItem(27, cancel);
 			rewindInv.setItem(35, activate);
@@ -2167,29 +2792,21 @@ public class Reality implements Listener {
 		else {
 			pages = 27;
 			rewindInv = Bukkit.createInventory(null, pages, ChatColor.GREEN + "Rewind");
-			if (loadouts > 6) {
-				maximum = 6;
-			} else maximum = loadouts;
 			
 			rewindInv.setItem(18, cancel);
 			rewindInv.setItem(26, activate);
 		}
 		
 		
-		if(loadouts < 2) {
-			p.sendMessage("There aren't any rewind slots available yet.");
-			p.sendMessage("Please wait up to 1 minute");
-			p.closeInventory();
-			return;
-		}
+
 		
 		
-		for(int i = 1; i < maximum; i++) {
+		for(int i = 1; i < loadouts; i++) {
 			
-			boolean enchant;
-			if(rewindMinutes == -1)
-				enchant = false;
-			else enchant = true;
+			if(!hasPower && i > 5) {
+				p.openInventory(rewindInv);
+				return;
+			}
 			
 			ItemStack load = createGuiItem(Material.BOOK, ChatColor.GREEN + "" + i + " minute", ChatColor.DARK_GREEN + "Go back in time");
 			load.setAmount(i);
@@ -2203,13 +2820,7 @@ public class Reality implements Listener {
 				rewindInv.setItem(slot + i, load);
 			}
 			
-			if(enchant) {
-				int addition;
-				if(rewindMinutes > 5)
-					addition = 14;
-				else addition = 10;
-				addEmptyEnchantment(rewindInv.getItem(addition + rewindMinutes));
-			}
+
 			
 		}
 		
@@ -2268,7 +2879,6 @@ public class Reality implements Listener {
 			
 			
 		}
-		
 		freezeTask = sched.scheduleSyncRepeatingTask(plugin, new Runnable() {
 			
 			int timer = freezeDuration;
@@ -2281,7 +2891,6 @@ public class Reality implements Listener {
 			public void run() {
 				
 				if(timer == 0) {
-					
 					sched.cancelTask(freezeTask);
 					Freezer = null;
 					timeFrozen = false;
@@ -2320,6 +2929,580 @@ public class Reality implements Listener {
 	
 	
 	
+	
+	
+	
+	
+	//Soul //Soul //Soul //Soul //Soul //Soul //Soul //Soul //Soul //Soul //Soul //Soul //Soul //Soul //Soul +
+	
+	@EventHandler
+	public void touchNPC(RightClickNPC event) {
+		Player player = event.getPlayer();
+		
+		player.sendMessage(ChatColor.DARK_AQUA + "You have interrupted " + limboVictim.getName() + "'s body");
+		player.sendMessage(ChatColor.DARK_AQUA + limboVictim.getName() + "'s soul has returned to it's body");
+		
+		shooter.sendMessage(ChatColor.RED + "Your victim's body has been interrupted, " + limboVictim.getName() + "'s soul has been released");
+		
+		becomeYourself(limboVictim);
+		
+		limboVictim.teleport(limboVictimLocation);
+		limboVictim.sendMessage(ChatColor.GOLD + "Your body has been interrupted, your soul has returned to your body");
+		
+		preventTrap();
+		limboVictim.setHealth(victimHealth);
+		
+		player.getWorld().spawnParticle(Particle.EXPLOSION_HUGE, limboVictimLocation.getX(), limboVictimLocation.getY(), limboVictimLocation.getZ(), 30, 0, 0, 0, 0 , null);
+		player.getWorld().playSound(limboVictimLocation, Sound.ENTITY_GENERIC_EXPLODE, 3, 1);
+		
+		BukkitScheduler sched = player.getServer().getScheduler();
+		sched.cancelTask(voidtask);
+		
+		limboVictim.getInventory().setContents(limboVictimInv);
+		
+		limboVictim = null;
+		limboVictimLocation = null;
+		Arrays.fill(limboVictimInv, null);
+		shooter = null;
+		
+		sched.cancelTask(wave1task);
+		sched.cancelTask(wave2task);
+		
+		NPC.removeNPC(victimID);
+		
+		
+	}
+	
+	
+
+	//poison splash
+	public void intoxicatePlayer(Player player) {
+		//nausea, poison?
+		//player.sendTitle(ChatColor.DARK_GREEN + "Your soul is being intoxicated", "", 20, 100, 20);
+		PotionEffect toxin = new PotionEffect(PotionEffectType.POISON, 100, 1);
+		player.addPotionEffect(toxin);
+		player.playSound(player.getLocation(), Sound.ENTITY_WITCH_CELEBRATE, 3, 1);
+		
+	}
+	//ender eye
+	public void blindPlayer(Player player) {
+		PotionEffect blindness = new PotionEffect(PotionEffectType.BLINDNESS, 100, 1);
+		player.addPotionEffect(blindness);
+		player.playSound(player.getLocation(), Sound.AMBIENT_CAVE, 3, 1 + random.nextFloat());
+	}
+	
+	//white skull
+	public void dogAnimation(Player player) {
+		
+		player.closeInventory();
+		
+        Location location = player.getLocation();
+        double yawy = location.getYaw();
+        double yaw = Math.toRadians(-yawy);
+        double plusX = Math.sin(yaw) * 3;
+        double plusZ = Math.cos(yaw) * 3;
+        Location loc = location.clone().add(plusX, 0, plusZ);
+        
+        //player.sendMessage(player.getEyeLocation().getYaw() + "");
+        //player.sendMessage(plusX/3 +", " + plusZ/3);
+        
+		Wolf wolf = (Wolf) player.getWorld().spawnEntity(loc, EntityType.WOLF);
+		wolf.setAI(false);
+		wolf.teleport(loc.setDirection(player.getLocation().getDirection().multiply(-1)));
+		
+		player.playSound(player.getLocation(), Sound.ENTITY_WOLF_AMBIENT, 5, 1);
+		
+		BukkitScheduler sched = player.getServer().getScheduler();
+		sched.runTaskLater(plugin, new Runnable() {
+			
+			@Override
+			public void run() {
+				player.playSound(player.getLocation(), Sound.ENTITY_WOLF_HURT, 5, 1);
+				
+				wolf.setFireTicks(6000);
+				wolf.teleport(loc.setDirection(player.getLocation().getDirection().multiply(-1)));
+				
+			}
+			
+		}, 40L);
+		
+	}
+	
+	public void creeperAnimation(Player player) {
+		
+		player.closeInventory();
+		
+        Location location = player.getLocation();
+        double yawy = location.getYaw();
+        double yaw = Math.toRadians(-yawy);
+        double plusX = Math.sin(yaw);
+        double plusZ = Math.cos(yaw);
+        Location loc = location.clone().add(plusX, 0, plusZ);
+        
+        //player.sendMessage(player.getEyeLocation().getYaw() + "");
+        //player.sendMessage(plusX/3 +", " + plusZ/3);
+        
+		Creeper creeper = (Creeper) player.getWorld().spawnEntity(loc, EntityType.CREEPER);
+		creeper.teleport(loc.setDirection(player.getLocation().getDirection().multiply(-1)));
+		
+		player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 10, (float) 0.5);
+		
+		BukkitScheduler sched = player.getServer().getScheduler();
+		sched.runTaskLater(plugin, new Runnable() {
+			
+			@Override
+			public void run() {
+				creeper.remove();
+			}
+			
+		}, 29L);
+		
+	}
+	
+	public void scarePlayer(Player player) {
+		player.playEffect(EntityEffect.GUARDIAN_TARGET);
+		PotionEffect slowness = new PotionEffect(PotionEffectType.SLOW, 300, 2);
+		player.playSound(player.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 3, 1);
+		player.addPotionEffect(slowness);
+		/*Scary Sounds:
+		 * 	- Witch laugh
+		 * 	- Ghast scream
+		 * 	- Wolf death
+		 * 	- Creeper about to explode
+		 * 	- Phantom screech
+		 * 	- Horse death
+		 */
+		
+		
+	}
+
+
+	
+	public void becomeSoul(Player player) {
+		Property property = new Property("textures", "eyJ0aW1lc3RhbXAiOjE1ODY2NTg5ODMxMTEsInByb2ZpbGVJZCI6IjAyZTVhMGU4MDBjNDRhYzFhNjVjMWYzN2IwM2FiZGJlIiwicHJvZmlsZU5hbWUiOiJBaWJvaCIsInNpZ25hdHVyZVJlcXVpcmVkIjp0cnVlLCJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTkyZTNmZTdkYWZlMDJjMGJlMDFjMTdjYmU2NGRjMGQ5YTI1MDVjMWNmMjM4MzdjNDllMmFlNzk0YWMxMjE4NCJ9fX0=", "UcCIXU9YXLtZXQ1MRNDKw3OBizTbw8ydZc9gy6F+h1rjgOX09sM/8tIxgeK8Se6794cbZwac6Hn0Io7ivUHZsp0cZ1CM/JNceal+au0JqoUDGTflUuEdgyCVEyp7Ee1/G8yDiQq8/mH87k2OP+QSQY8Ufl6YQkmbucuKhFo7Cf263jOp004pZBsC1avjcxX1nf7cs1FtzcgqIQIWlMC7vqptsfzY1tCI26ARbVoekYNkUgUm1eaqzT6lUqxxyeGZq21mZFfShzA8wtrMMEF9EHsPL2z1AwHkZiThj2dNVYTdpiwtmnRukwsJftbRfvvJ/TWmdjQKKMi7jM8py+nRpoupBGyLT1oyL1IhS2e2gMKeRJtA379WT2p/ZmDhDLHRvE4iAS74iie5aqz/thol/GnbYyV8WZPNm7x7IzqnshoKDyyVfcXnH4dZO2awNCPfYQflp1thAn9GJMoUTVINp6aFY1zoU81kkb98HH9ycXHwXCdpwtuR+m9mPdAdbnMTA3oZAJYf/t/Up+M/rw4jOIqbKAf0LIMJ9px+PH7J14Vd2yW3R8k37AViE4HUfIX3lzeDPt7fpwPFypc+6tz7QHxJnCo4LTCvrxl42iXbZ53qZ8E2X+58sGOzlhs1qu8vYKbc3k5yhGm+koaoPwJo+K5kqV8wF6ndNUMJA3WyZgU=");
+		
+    	GameProfile profile = ((CraftPlayer)player).getHandle().getProfile();
+    	PlayerConnection connection = ((CraftPlayer)player).getHandle().playerConnection;
+    	
+    	connection.sendPacket(new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER, ((CraftPlayer)player).getHandle()));
+    	
+    	profile.getProperties().removeAll("textures");
+    	profile.getProperties().put("textures", property);
+
+    	
+    	connection.sendPacket(new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.ADD_PLAYER, ((CraftPlayer)player).getHandle()));
+    	
+//    	Location loc = player.getLocation();
+//    	player.teleport(new Location(world2, 0, 256, 0));
+//    	
+//    	player.hidePlayer(player);
+//    	player.showPlayer(player);
+//    	
+//    	player.teleport(loc);
+    	
+	}
+	
+	public void becomeYourself(Player player) {
+		
+		String name = player.getName();
+		
+		Property propertyy;
+		
+    	try {
+    		URL url = new URL("https://api.mojang.com/users/profiles/minecraft/" + name);
+    		InputStreamReader reader = new InputStreamReader(url.openStream());
+    		String uuid = new JsonParser().parse(reader).getAsJsonObject().get("id").getAsString();
+    		
+    		URL url2 = new URL("https://sessionserver.mojang.com/session/minecraft/profile/" + uuid	
+    				+ "?unsigned=false");
+    		InputStreamReader reader2 = new InputStreamReader(url2.openStream());
+    		JsonObject property = new JsonParser().parse(reader2).getAsJsonObject().get("properties")
+    				.getAsJsonArray().get(0).getAsJsonObject();
+    		String texture = property.get("value").getAsString();
+    		String signature = property.get("signature").getAsString();
+    		propertyy = new Property("textures", texture, signature);
+    		
+
+    		
+    	}	catch (Exception e) {
+    		EntityPlayer p = ((CraftPlayer) player).getHandle();
+    		GameProfile profile = p.getProfile();
+    		Property property = profile.getProperties().get("textures").iterator().next();
+    		String texture = property.getValue();
+    		String signature = property.getSignature();
+    		propertyy = new Property("textures", texture, signature);
+    		
+    	}
+    	
+    	GameProfile profile = ((CraftPlayer)player).getHandle().getProfile();
+    	PlayerConnection connection = ((CraftPlayer)player).getHandle().playerConnection;
+    	
+    	connection.sendPacket(new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER, ((CraftPlayer)player).getHandle()));
+    	
+    	profile.getProperties().removeAll("textures");
+    	profile.getProperties().put("textures", propertyy);
+
+    	
+    	connection.sendPacket(new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.ADD_PLAYER, ((CraftPlayer)player).getHandle()));
+	}
+		
+	
+	public void tothevoid(Player player) {
+		NPC.createNPC(player, player.getName());
+		victimID = NPC.getID(player.getName());
+		limboVictim = player;
+		limboVictimLocation = player.getLocation();
+		victimHealth = limboVictim.getHealth();
+		limboVictimInv = limboVictim.getInventory().getContents();
+		limboVictim.getInventory().clear();
+		
+
+		becomeSoul(player);
+		
+		BukkitScheduler sched = player.getServer().getScheduler();
+		sched.runTaskLater(plugin, new Runnable() {
+			
+			@Override
+			public void run() {
+				if(!shooterPower){
+					World end = Bukkit.getWorld("world_the_end");
+		    		Location nowhere = new Location(end, 69, -420, 69);
+		    		player.teleport(nowhere);
+		    		player.sendMessage(ChatColor.RED + "Your soul was sent to the mental limbo for 30 seconds");
+		    		player.sendMessage(ChatColor.RED + "If someone interrupts your body, you will wake up immediatly");
+				}
+				
+				else {
+					World hell = Bukkit.getWorld("world_nether");
+					
+					Location roof = new Location(hell, 20, 129, 20);
+					
+					player.teleport(roof);
+					player.setHealth(20);
+					player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 70, 255));
+					
+		    		player.sendMessage(ChatColor.DARK_RED + "Your soul was sent to the mental hell for 30 seconds,"
+		    				+ " if the demons get your soul, your body will corrupt and die");
+		    		player.sendMessage(ChatColor.RED + "If someone interrupts your body, you will wake up immediatly");
+					
+		    		
+		    		summonPigZombies(40, limboVictim.getLocation(), hell);
+		    		summonGhasts(15, limboVictim.getLocation(), hell);
+		    		
+		    		sched.runTaskLater(plugin, new Runnable() {
+		    			
+		    			@Override
+		    			public void run() {
+		    				
+				    		summonPigZombies(20, limboVictim.getLocation(), hell);
+				    		summonGhasts(7, limboVictim.getLocation(), hell);
+				    		
+				    		limboVictim.sendMessage(ChatColor.DARK_RED + "Another wave has been summoned");
+				    		
+		    			}
+		    			
+		    			
+		    		}, 200L);
+		    		
+		    		sched.runTaskLater(plugin, new Runnable() {
+		    			
+		    			@Override
+		    			public void run() {
+		    				
+				    		summonPigZombies(50, limboVictim.getLocation(), hell);
+				    		summonGhasts(20, limboVictim.getLocation(), hell);
+				    		
+				    		limboVictim.sendMessage(ChatColor.DARK_RED + "A large wave has been summoned, may god have mercy on your soul");
+		    			}
+		    			
+		    			
+		    		}, 440L);
+
+					
+				}
+		    	
+		    	limboVictim.playSound(limboVictimLocation, Sound.BLOCK_PORTAL_TRAVEL, 10, 1);
+			}
+			
+			
+		}, 1);
+		
+		
+		
+		
+		voidtask = sched.scheduleSyncRepeatingTask(plugin, new Runnable() {
+			double timer = 30.00;		
+			@Override
+			public void run() {
+				
+				if(timer <= 0) {
+					
+					becomeYourself(limboVictim);
+					
+					player.teleport(limboVictimLocation);
+					
+					shooter.sendMessage(ChatColor.RED + "It's been 30 seconds, " + limboVictim.getName() + "'s soul has been released");
+
+					player.sendMessage(ChatColor.DARK_AQUA + "It's been 30 seconds, your soul has been released from the mental limbo");
+					preventTrap();
+										
+					NPC.removeNPC(victimID);
+					
+					limboVictim.getInventory().setContents(limboVictimInv);
+					limboVictim.setHealth(victimHealth);
+
+					
+					limboVictim = null;
+					limboVictimLocation = null;
+					Arrays.fill(limboVictimInv, null);
+					shooter = null;
+					
+					if(shooterPower) {
+						for(int i = 0; i < pigzombies.size(); i++) {
+							pigzombies.get(i).remove();
+						}
+						pigzombies.clear();
+						for(int i = 0; i < ghasts.size(); i++) {
+							ghasts.get(i).remove();
+						}
+						ghasts.clear();
+					}
+					
+					sched.cancelTask(voidtask);
+					return;
+				}
+				
+				if(victimDeath) {
+					sched.cancelTask(voidtask);
+					sched.cancelTask(wave1task);
+					sched.cancelTask(wave2task);
+					shooter.sendMessage(ChatColor.DARK_GREEN + limboVictim.getName() + "'s soul was eliminated by the demons making his body corrupt and die");
+					
+					World world = Bukkit.getWorld("world");
+					for(int i = 0; i < 40; i++) {
+						world.dropItemNaturally(limboVictimLocation, limboVictimInv[i]);
+					}
+					
+					becomeYourself(limboVictim);
+					NPC.removeNPC(victimID);
+					
+					
+					limboVictim = null;
+					limboVictimLocation = null;
+					Arrays.fill(limboVictimInv, null);
+					shooter = null;
+					
+					for(int i = 0; i < pigzombies.size(); i++) {
+						pigzombies.get(i).remove();
+					}
+					pigzombies.clear();
+					for(int i = 0; i < ghasts.size(); i++) {
+						ghasts.get(i).remove();
+					}
+					ghasts.clear();
+					
+					victimDeath = false;
+					
+					
+					
+					return;
+				}
+				
+				if(Math.abs(10 - timer) < 1e-4) {
+					player.sendMessage(ChatColor.DARK_AQUA + "You have 10 seconds left");
+				}
+				
+				if(Math.abs(5 - timer) < 1e-4) {
+					player.sendMessage(ChatColor.DARK_AQUA + "5");
+				}
+				
+				if(Math.abs(4 - timer) < 1e-4) {
+					player.sendMessage(ChatColor.DARK_AQUA + "4");
+				}
+				
+				if(Math.abs(3 - timer) < 1e-4) {
+					player.sendMessage(ChatColor.DARK_AQUA + "3");
+				}
+				
+				if(Math.abs(2 - timer) < 1e-4) {
+					player.sendMessage(ChatColor.DARK_AQUA + "2");
+				}
+				
+				if(Math.abs(1 - timer) < 1e-4) {
+					player.sendMessage(ChatColor.DARK_AQUA + "1");
+				}
+				
+				timer -= 0.05;
+			}
+			
+		}, 0, 1L);
+		
+		
+	}
+	
+	
+	public void preventTrap() {
+		
+		// 3; 3; 3
+		Location original = limboVictimLocation;
+		limboVictimLocation = limboVictimLocation.clone().subtract(3, 4, 3);
+		// 0; 0; 0
+		
+		for(int i = 0; i < 7; i++) {
+			 
+			 
+			
+			for(int j = 0; j < 7; j++) {
+				 
+				 
+				 
+				for(int k = 0; k < 7; k++) {
+					 
+					 
+					 limboVictimLocation.getBlock().setType(Material.AIR);
+					 limboVictimLocation = limboVictimLocation.clone().add(1, 0, 0);
+					 
+				}
+				
+				limboVictimLocation = limboVictimLocation.clone().add(0, 1, 0);
+				limboVictimLocation = limboVictimLocation.clone().subtract(7, 0, 0);
+				 
+			}
+			
+			
+			limboVictimLocation = limboVictimLocation.clone().add(0, 0, 1);
+			limboVictimLocation = limboVictimLocation.clone().subtract(0, 7, 0);
+			 
+		 }
+		
+		limboVictimLocation = original;
+		 
+	}
+	
+	public void summonPigZombies(int amount, Location location, World hell) {
+		Location close;
+		for(int i = 0; i < amount; i++) {
+			close = location.clone().add(random.nextInt(20) - 10, 0, random.nextInt(20) - 10);
+			PigZombie pigzombie = (PigZombie) hell.spawnEntity(close, EntityType.ZOMBIFIED_PIGLIN);
+			pigzombie.setAngry(true);
+			pigzombie.setTarget(limboVictim);
+			pigzombies.add(pigzombie);
+		}
+	}
+	
+	public void summonGhasts(int amount, Location location, World hell) {
+		Location close;
+		for(int i = 0; i < amount; i++) {
+			close = location.clone().add(random.nextInt(40) - 20, random.nextInt(20) + 5, random.nextInt(40) - 20);
+			Ghast ghast = (Ghast) hell.spawnEntity(close, EntityType.GHAST);
+			ghast.setTarget(limboVictim);
+			ghasts.add(ghast);
+		}
+	}
+	
+	
+	public void generateEveryoneInvSoul(Player p) {
+		
+		int totalPlayers = Bukkit.getOnlinePlayers().size() - 1;
+		
+		if(totalPlayers == 0) {
+			p.sendMessage(ChatColor.BLUE + "You're the only online player");
+			p.closeInventory();
+			return;
+		}
+		
+		int size = totalPlayers/9;
+		if (totalPlayers % 9 != 0) {
+			size++;
+		}
+		
+		size *= 9;
+		
+		everyoneInvSoul = Bukkit.createInventory(null, size, ChatColor.BLUE + "Online players");
+		for(Player player : Bukkit.getOnlinePlayers()) {
+			
+			if(player != p) {
+				ItemStack skull = new ItemStack(Material.PLAYER_HEAD, 1);
+				SkullMeta meta = (SkullMeta) skull.getItemMeta();
+				meta.setOwningPlayer(player);
+				meta.setDisplayName(ChatColor.RED + player.getName());
+				skull.setItemMeta(meta);
+				
+				everyoneInvSoul.addItem(skull);
+			}
+			
+			
+		}
+		
+		p.openInventory(everyoneInvSoul);
+	}
+	
+	public void generateChooseManipulateInv(Player player){
+		manChoice = Bukkit.createInventory(null, 9, ChatColor.GOLD + "Choose effect");
+		
+		ItemStack back = createGuiItem(Material.RED_WOOL, ChatColor.RED + "Cancel", ChatColor.DARK_RED + "Go back");
+		manChoice.setItem(0, back);
+		
+		ItemStack eye = createGuiItem(Material.ENDER_EYE, ChatColor.BLACK + "Blind", ChatColor.GOLD + "Blind your target");
+		manChoice.setItem(4, eye);
+		
+		ItemStack poison = createGuiItem(Material.SPLASH_POTION, ChatColor.DARK_GREEN + "Toxin", ChatColor.GOLD + "Intoxicate your target's soul");
+		PotionMeta meta = (PotionMeta) poison.getItemMeta();
+		meta.setColor(Color.GREEN);
+		poison.setItemMeta(meta);
+		manChoice.setItem(3, poison);
+		
+		ItemStack fear = createGuiItem(Material.SKELETON_SKULL, ChatColor.DARK_RED + "Fear", ChatColor.GOLD + "Scare your target");
+		manChoice.setItem(5, fear);
+		
+		player.openInventory(manChoice);
+	}
+	
+	
+	
+	
+	//MIND STONE //MIND STONE //MIND STONE //MIND STONE //MIND STONE //MIND STONE //MIND STONE //MIND STONE //MIND STONE 
+	
+	public void phaseShift(Player player) {
+        GameMode pastGamemode = player.getGameMode();
+        player.setGameMode(GameMode.SPECTATOR);
+		BukkitScheduler sched = player.getServer().getScheduler();
+		player.sendMessage(ChatColor.YELLOW + "You have became a ghost for 5 seconds");
+		
+		
+		ghostTask = sched.scheduleSyncRepeatingTask(plugin, new Runnable() {
+			
+			int timer = 5;
+			
+			@Override
+			public void run() {
+								
+				if(timer == 0) {
+					player.setGameMode(pastGamemode);
+					sched.cancelTask(ghostTask);
+				}
+				
+				else if(timer <= 3)
+					player.sendMessage(ChatColor.RED + "" + timer);
+				
+
+				timer--;
+				
+			}
+			
+		}, 0, 20L);
+	}
+	
+	
+	public void astral(Player player) {
+		
+	}
+	
+	
+	
+	
+	
+	
 	//Stone Menus //Stone Menus //Stone Menus //Stone Menus //Stone Menus //Stone Menus //Stone Menus //Stone Menus 
 	
 	
@@ -2351,6 +3534,18 @@ public class Reality implements Listener {
 	
 	public void generateMindInv(Player p) {
 		mindInv = Bukkit.createInventory(null, 45, ChatColor.YELLOW + "Mind Stone");
+		
+		ItemStack protection = createGuiItem(Material.GOLDEN_APPLE, ChatColor.YELLOW + "Pain killers", ChatColor.GOLD + "You are too smart for pain");
+		ItemStack spy = createGuiItem(Material.COMPASS, ChatColor.YELLOW + "", ChatColor.GOLD + "");
+		ItemStack astral = createGuiItem(Material.END_CRYSTAL, ChatColor.YELLOW + "Astral vision", ChatColor.GOLD + "Meditate and view the world");
+		ItemStack phase = createGuiItem(Material.CHORUS_FRUIT, ChatColor.YELLOW + "Phase shift", ChatColor.GOLD + "Become a ghost for 5 seconds");
+		
+		mindInv.setItem(19, protection);
+		mindInv.setItem(21, spy);
+		mindInv.setItem(23, astral);
+		mindInv.setItem(25, phase);
+		
+		
 		p.openInventory(mindInv);
 	}
 
@@ -2404,44 +3599,94 @@ public class Reality implements Listener {
 	
 	public void generateSoulInv(Player p) {
 		soulInv = Bukkit.createInventory(null, 45, ChatColor.GOLD + "Soul Stone");
+		
+		ItemStack limbo = createGuiItem(Material.WITHER_SKELETON_SKULL, ChatColor.GOLD + "Mental Limbo",
+				ChatColor.RED + "Send a player's soul to a limbo");
+		ItemStack manipulate = createGuiItem(Material.TOTEM_OF_UNDYING, ChatColor.GOLD + "Manipulate", 
+				ChatColor.RED + "Manipulate whoever you desire");
+		
+		soulInv.setItem(21, limbo);
+		
+		soulInv.setItem(23, manipulate);
+		
+		soulInv.setItem(40, disable);
+		
+		
 		p.openInventory(soulInv);
 	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	
 	//acquired //acquired //acquired //acquired //acquired //acquired //acquired 
 	
 	public void acquiredSpaceStone(Player p) {
+		this.plugin.data.reloadConfig();
 		plugin.gloves.get(findPlayer(p)).setSpace(true);
 		Bukkit.broadcastMessage(ChatColor.BLUE + p.getName() + " has acquired the space stone");
 		p.removePotionEffect(PotionEffectType.SPEED);
 		p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, Integer.MAX_VALUE, velocity));
 		p.closeInventory();
+		
+		String uuid = p.getUniqueId().toString();
+		this.plugin.data.getConfig().set("players." + uuid + ".hasSpace", true);
+		this.plugin.data.saveConfig();
 	}
 	
 	public void acquiredMindStone(Player p) {
+		this.plugin.data.reloadConfig();
 		plugin.gloves.get(findPlayer(p)).setMind(true);
 		Bukkit.broadcastMessage(ChatColor.YELLOW + p.getName() + " has acquired the mind stone");
 		p.closeInventory();
+		
+		String uuid = p.getUniqueId().toString();
+		this.plugin.data.getConfig().set("players." + uuid + ".hasMind", true);
+		this.plugin.data.saveConfig();
 	}
 	
 	public void acquiredRealityStone(Player p) {
+		this.plugin.data.reloadConfig();
+
 		plugin.gloves.get(findPlayer(p)).setReality(true);
 		Bukkit.broadcastMessage(ChatColor.RED + p.getName() + " has acquired the reality stone");
 		p.closeInventory();
+		
+		String uuid = p.getUniqueId().toString();
+		this.plugin.data.getConfig().set("players." + uuid + ".hasReality", true);
+		this.plugin.data.saveConfig();
 	}
 	
 	public void acquiredPowerStone(Player p) {
+		this.plugin.data.reloadConfig();
 		plugin.gloves.get(findPlayer(p)).setPower(true);
 		Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + p.getName() + " has acquired the power stone");
 		p.removePotionEffect(PotionEffectType.INCREASE_DAMAGE);
 		p.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, Integer.MAX_VALUE, 2));
 		p.closeInventory();
+		
+		String uuid = p.getUniqueId().toString();
+		this.plugin.data.getConfig().set("players." + uuid + ".hasPower", true);
+		this.plugin.data.saveConfig();
 	}
 	
 	public void acquiredTimeStone(Player p) {
+		this.plugin.data.reloadConfig();
 		plugin.gloves.get(findPlayer(p)).setTime(true);
 		Bukkit.broadcastMessage(ChatColor.GREEN + p.getName() + " has acquired the time stone");
 		p.closeInventory();
+		
+		String uuid = p.getUniqueId().toString();
+		this.plugin.data.getConfig().set("players." + uuid + ".hasTime", true);
+		this.plugin.data.saveConfig();
 		
 		enableRewind = true;
 		
@@ -2450,9 +3695,10 @@ public class Reality implements Listener {
 		for(Player player : Bukkit.getOnlinePlayers()) {
 			timeStamp.put(player, new TimeStamp(plugin.gloves.get(findPlayer(player))));
 		}
-		timeStamps.add(timeStamp);
+		timeStamps.push(timeStamp);
 		
-		pastEntities.add(new PastEntities(world));
+		
+		pastEntities.push(new PastEntities(world));
 		
 		BukkitScheduler sched = p.getServer().getScheduler();
 		
@@ -2468,9 +3714,9 @@ public class Reality implements Listener {
 					loadouts++;
 					
 					if(loadouts != 1) {
-						if(loadouts > 10) {
-							timeStamps.remove(1);
-							pastEntities.remove(1);
+						if(loadouts > 11) {
+							timeStamps.removeElementAt(10);
+							pastEntities.removeElementAt(10);
 							loadouts--;
 						}
 						p.sendMessage(ChatColor.GREEN + "A new timestamp has been created");
@@ -2480,10 +3726,9 @@ public class Reality implements Listener {
 							timeStamp.put(player, new TimeStamp(plugin.gloves.get(findPlayer(player))));
 						}
 						
-						timeStamps.add(timeStamp);
+						timeStamps.push(timeStamp);
 						
-						
-						pastEntities.add(new PastEntities(world));
+						pastEntities.push(new PastEntities(world));
 					}
 					
 					
@@ -2494,14 +3739,20 @@ public class Reality implements Listener {
 			}
 			
 			
-		}, 0L, 200L);
+		}, 0L, 1200L);
 		
 	}
 	
 	public void acquiredSoulStone(Player p) {
+		this.plugin.data.reloadConfig();
 		plugin.gloves.get(findPlayer(p)).setSoul(true);
 		Bukkit.broadcastMessage(ChatColor.GOLD + p.getName() + " has acquired the soul stone");
 		p.closeInventory();
+		String uuid = p.getUniqueId().toString();
+		this.plugin.data.getConfig().set("players." + uuid + ".hasSoul", true);
+		this.plugin.data.saveConfig();
+		
+		//NPC.createNPC(p, p.getName());
 	}
 	
 	
@@ -2510,4 +3761,5 @@ public class Reality implements Listener {
 	
 
 	
+
 }

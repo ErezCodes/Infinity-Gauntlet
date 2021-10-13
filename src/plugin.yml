@@ -1,0 +1,22 @@
+name: IG
+version: 1.1
+author: Erez
+main: me.erez.IG.Main
+description: a challenge based on the Avengers movie
+api-version: 1.16
+
+commands:
+  getStones:
+    description: Get every infinity stone
+  getGlove:
+    description: Get the Infinity Gauntlet
+  printGlovers:
+    description: Print every glover
+  togglefalldamage:
+    description: toggles the fall damage in the server
+  addNPC:
+    description: adds an npc of your character
+  removeNPCS:
+    description: removes every npc from hte server
+  summonWolf:
+    description: summons a wolf

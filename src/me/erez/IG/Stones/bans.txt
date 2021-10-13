@@ -1,0 +1,3 @@
+ban list:
+	- lava bucket?
+	- fall damage (v)

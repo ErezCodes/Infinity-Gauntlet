@@ -1,0 +1,9 @@
+restore explosions
+restore chests?
+add particles and sound effects
+make sure the UI is understandable
+disable fall damage (V)
+add cooldowns
+disable options to lose the stones (crafting, burning the item)
+pressing F will cycle the next ability
+add magic particles to the body

@@ -1,0 +1,8 @@
+fix list:
+	- fix the entity invulnerability ticks thing
+	- see PastEntities
+	- correct the velocity numbers
+	- fix the soul skins' legs
+	- if a player is rewinding and someone is in the limbo, send his body to the NPC 
+	- sync Glove position int with the actual equipped ability
+	- make activating the manipulate String open up the menu
